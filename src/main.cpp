@@ -13,6 +13,7 @@
 #include <glm/gtc/matrix_transform.hpp> // glm::translate, glm::rotate, glm::scale, glm::perspective
 #include <glm/gtc/type_ptr.hpp> //glm::value_ptr
 
+#include "Utils/logfile.h"
 #include "Game/Scene.h"
 #include "Renderer/Renderer3D.h"
 #include "Physics/RigidBody.h"
@@ -65,7 +66,7 @@ int main(int argc, char* argv[])
 	glEnable(GL_DEPTH_TEST); // enable depth-testing
 	glDepthFunc(GL_LESS);
 	
-	glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
+	glClearColor(0.0f, 0.0f, 0.5f, 1.0f);
 
 	//Setup IMGUI
 	ImGui::CreateContext();
@@ -81,8 +82,30 @@ int main(int argc, char* argv[])
 	ArgetRenderer::Scene3D scene;
 	ArgetRenderer::setupScene(scene);
 
+#define FPS_TIMED 0
+#if FPS_TIMED
+	double previousTime = glfwGetTime();
+	int frameCount = 0;
+#endif
+
 	while (!glfwWindowShouldClose(window))
 	{
+#if FPS_TIMED
+		// Measure speed
+		double currentTime = glfwGetTime();
+		frameCount++;
+		// If a second has passed.
+		if (currentTime - previousTime >= 1.0)
+		{
+			// Display the frame count here any way you want.
+			//displayFPS(frameCount);
+			DEBUG_LOG(frameCount << "\n");
+
+			frameCount = 0;
+			previousTime = currentTime;
+		}
+#endif
+
 		// update other events like input handling 
 		glfwPollEvents();
 

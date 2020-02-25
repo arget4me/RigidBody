@@ -24,8 +24,13 @@ namespace ArgetRenderer
 	}Scene3D;
 
 
-	inline glm::quat quatIdentity() {
-		return { 0, 0, 0, 1 };
+	inline const glm::quat quatIdentity() {
+		glm::quat q;
+		q.x = 0.0f;
+		q.y = 0.0f;
+		q.z = 0.0f;
+		q.w = 1.0f;
+		return q;
 	};
 
 	void setupScene(Scene3D& scene);
