@@ -118,6 +118,13 @@ int main(int argc, char* argv[])
 
 		//Draw
 		ImGui_ImplGlfwGL3_NewFrame();
+		if (ImGui::Button("Restart Scene"))
+		{
+			//Setup scene
+			ArgetRenderer::Scene3D new_scene;
+			ArgetRenderer::setupScene(new_scene);
+			scene = new_scene;
+		}
 		ArgetRenderer::physicsDrawIMGUI();
 		ArgetRenderer::rendererDrawIMGUI();
 		ImGui::Render();

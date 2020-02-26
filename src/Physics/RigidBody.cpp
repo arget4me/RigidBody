@@ -53,10 +53,10 @@ ContactPoint contactPoints[100];
 unsigned int numContacts = 0;
 int counter = 0;
 
-float restitution = 0.3f;
+float restitution = 0.35f;
 
 float fixedTimeStep = 1.0f / 60.0f;
-float dampening = 1.00f;
+float dampening = 0.99f;
 
 glm::vec3 gravity = glm::vec3(0.0f, 0.0f, 0.0f);
 
@@ -124,8 +124,8 @@ void calculateCollisions(Scene3D& scene, unsigned int index)
 					if (numContacts <= MAX_NUM_CONTACTS)
 					{
 						contactPoints[numContacts - 1].contactNormal = planeNormal;
-						contactPoints[numContacts - 1].contactPosition = planeNormal * glm::abs(vertexDistance - planeOffset)/2.0f + transformedPoint;
-						contactPoints[numContacts - 1].penetrationDepth = glm::abs(planeOffset - vertexDistance);
+						contactPoints[numContacts - 1].contactPosition = planeNormal * glm::abs(vertexDistance - planeOffset) + transformedPoint;
+						contactPoints[numContacts - 1].penetrationDepth = planeOffset - vertexDistance;
 						contactPoints[numContacts - 1].rigidBodyIndex1 = index;
 						contactPoints[numContacts - 1].rigidBodyIndex2 = -1; // only one rigid body
 						glm::quat& angVelQ = scene.angularVelocities[index];
@@ -153,11 +153,11 @@ void resolveCollisions(Scene3D& scene)
 			closingVelocity = glm::dot(p.closingVelocity, p.contactNormal) * p.contactNormal;
 		}
 
-		glm::vec3 impulse = -closingVelocity * restitution;
+		glm::vec3 impulse = -closingVelocity * (1 + restitution);
 
 #define VELOCITY_PER_IMPULSE 1.0f
 
-		glm::vec3 linearImpulse = impulse / VELOCITY_PER_IMPULSE;
+		glm::vec3 linearImpulse = impulse * scene.inverseMasses[p.rigidBodyIndex1];
 		//u = (qrel) X g
 		//glm::vec3 angularImpulse = TO_WORLD_SPACE(scene.inverseInertiaTensors[p.rigidBodyIndex1]) * u;
 		//DEBUG_LOG("Prev: " << scene.linearVelocities[p.rigidBodyIndex1].x << ", " << scene.linearVelocities[p.rigidBodyIndex1].y << ", " << scene.linearVelocities[p.rigidBodyIndex1].z << "\n");
