@@ -230,14 +230,6 @@ void applyRigidBodyPhysics(Scene3D& scene)
 			//If it has an inverse mass then it's a rigid body.
 			applyFroces(scene, i);
 			calculateCollisions(scene, i);
-
-			////velocity -> updated position
-			//scene.positions[i] += scene.linearVelocities[i] * fixedTimeStep;
-
-
-			////@NOTE: Somehow I need to multiply by TimeStep twise for the velocity to be in degrees per seconds. Looks wrong but this works for now.
-			//scene.orientations[i] = glm::normalize(scene.orientations[i] +  fixedTimeStep / 2.0f * (scene.angularVelocities[i] + debugAngularVelocity) * scene.orientations[i]);
-
 		}
 	}
 	resolveCollisions(scene);
@@ -252,8 +244,8 @@ void applyRigidBodyPhysics(Scene3D& scene)
 			scene.positions[i] += scene.linearVelocities[i] * fixedTimeStep;
 
 
-			//@NOTE: Somehow I need to multiply by TimeStep twise for the velocity to be in degrees per seconds. Looks wrong but this works for now.
-			scene.orientations[i] = glm::normalize(scene.orientations[i] +  fixedTimeStep / 2.0f * (scene.angularVelocities[i] + debugAngularVelocity) * scene.orientations[i]);
+			//Update orientation
+			scene.orientations[i] = glm::normalize(scene.orientations[i] + fixedTimeStep / 2.0f * (scene.angularVelocities[i] + debugAngularVelocity) * scene.orientations[i]);
 
 		}
 	}
