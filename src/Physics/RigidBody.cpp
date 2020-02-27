@@ -16,6 +16,8 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+
+
 #include "Renderer/Box.h"
 #include "Renderer/Plane.h"
 
@@ -78,7 +80,9 @@ inline void applyFroces(Scene3D& scene, unsigned int index)
 	//if (glm::length(rotationAxis) != 0)angularVelocity = rateOfRotation * glm::normalize(rotationAxis);
 	//else angularVelocity = glm::vec3(0);
 
-	//scene.angularVelocities[index] = glm::quat(0, angularVelocity.x, angularVelocity.y, angularVelocity.z);
+	scene.angularVelocities[index] *= dampening;
+	
+	//glm::quat(0, angularVelocity.x, angularVelocity.y, angularVelocity.z);
 
 }
 
@@ -119,12 +123,12 @@ void calculateCollisions(Scene3D& scene, unsigned int index)
 					if (numContacts <= MAX_NUM_CONTACTS)
 					{
 						contactPoints[numContacts - 1].contactNormal = planeNormal;
-						contactPoints[numContacts - 1].contactPosition = planeNormal * glm::abs(vertexDistance - planeOffset)/2.0f + transformedPoint;
+						contactPoints[numContacts - 1].contactPosition = planeNormal * glm::abs(vertexDistance - planeOffset) + transformedPoint;
 						contactPoints[numContacts - 1].penetrationDepth = planeOffset - vertexDistance;
 						contactPoints[numContacts - 1].rigidBodyIndex1 = index;
 						contactPoints[numContacts - 1].rigidBodyIndex2 = -1; // only one rigid body
 						glm::quat& angVelQ = scene.angularVelocities[index];
-						glm::vec3 angVel = glm::vec3(angVelQ.x, angVelQ.y, angVelQ.z);
+						glm::vec3 angVel = glm::vec3(angVelQ.x, angVelQ.y, angVelQ.z) * fixedTimeStep;
 						
 						contactPoints[numContacts - 1].closingVelocity = glm::cross(angVel, contactPoints[numContacts - 1].contactPosition - scene.positions[index]) + scene.linearVelocities[index];
 						
@@ -156,44 +160,40 @@ void resolveCollisions(Scene3D& scene)
 
 		//@TODO:Also include angular part, linear only uses inverseMass
 		glm::vec3 relPoint = p.contactPosition - scene.positions[p.rigidBodyIndex1];
+
 		glm::vec3 torquePerUnit = glm::cross(relPoint, p.contactNormal);
 		glm::mat3 rotationMat = glm::toMat3(scene.orientations[p.rigidBodyIndex1]);
-		glm::mat3 worldInverseInertiaTensor = rotationMat * scene.inverseInertiaTensors[p.rigidBodyIndex1];
-		glm::vec3 angVelPerUnit = worldInverseInertiaTensor * torquePerUnit;
+		//glm::mat3 worldInverseInertiaTensor = rotationMat * scene.inverseInertiaTensors[p.rigidBodyIndex1];
+		//glm::vec3 angVelPerUnit = worldInverseInertiaTensor * torquePerUnit;
+		glm::vec3 angVelPerUnit = rotationMat * torquePerUnit;
+		angVelPerUnit = scene.inverseInertiaTensors[p.rigidBodyIndex1] * angVelPerUnit;
 		glm::vec3 linearVelPerUnit = glm::cross(angVelPerUnit, relPoint);
 
 		float linFromAngPerUnitImpulse = glm::max(glm::dot(linearVelPerUnit, p.contactNormal), 0.0f);
 
 		float velPerUnitImpulse = scene.inverseMasses[p.rigidBodyIndex1] + linFromAngPerUnitImpulse;
 
-		glm::vec3 impulse = ( -closingVelocity * (1 + restitution) ) / velPerUnitImpulse;
-		glm::vec3 impulsiveTorque = glm::cross(impulse, relPoint);
-		glm::vec3 rotationChange = worldInverseInertiaTensor * impulsiveTorque;
+		float impulse = ( -glm::dot(closingVelocity, p.contactNormal) * (1 + restitution) ) / velPerUnitImpulse;
+
+		glm::vec3 impulsiveTorque = glm::cross(relPoint, impulse * p.contactNormal) ;
+		//glm::vec3 rotationChange = worldInverseInertiaTensor * impulsiveTorque;
+		glm::vec3 rotationChange = rotationMat * impulsiveTorque;
+		rotationChange = scene.inverseInertiaTensors[p.rigidBodyIndex1] * rotationChange;
 
 		scene.angularVelocities[p.rigidBodyIndex1] += glm::quat(0, rotationChange.x, rotationChange.y, rotationChange.z);
-		//Vector3 impulsiveTorque = impulse % relativeContactPosition;
-		//Vector3 rotationChange =
-			//inverseInertiaTensor.transform(impulsiveTorque);
 
-
-		glm::vec3 linearImpulse = scene.inverseMasses[p.rigidBodyIndex1] * impulse;
-		//u = (qrel) X g
-		//glm::vec3 angularImpulse = TO_WORLD_SPACE(scene.inverseInertiaTensors[p.rigidBodyIndex1]) * u;
-		//DEBUG_LOG("Prev: " << scene.linearVelocities[p.rigidBodyIndex1].x << ", " << scene.linearVelocities[p.rigidBodyIndex1].y << ", " << scene.linearVelocities[p.rigidBodyIndex1].z << "\n");
+		glm::vec3 linearImpulse = scene.inverseMasses[p.rigidBodyIndex1] * impulse * p.contactNormal;
+		float l_clo = glm::length(closingVelocity);
+		float l_lin = glm::length(linearImpulse);
 		
 		p.desiredVelocityChange = linearImpulse;
-		if (glm::length(linearImpulse) >= 5)
+		glm::vec3 deltaVel = p.desiredVelocityChange - glm::dot(changeInVelocity, p.contactNormal) * p.contactNormal ;
+		if (glm::dot(deltaVel, p.contactNormal) > 0)
 		{
-			DEBUG_LOG("%f", glm::length(linearImpulse));
+			changeInVelocity += deltaVel;
+			scene.linearVelocities[p.rigidBodyIndex1] += deltaVel;
 		}
-			glm::vec3 deltaVel = p.desiredVelocityChange - glm::dot(changeInVelocity, p.contactNormal) * p.contactNormal ;
-			if (glm::dot(deltaVel, p.contactNormal) > 0)
-			{
-				changeInVelocity += deltaVel;
-				scene.linearVelocities[p.rigidBodyIndex1] += deltaVel;
-			}
 		
-		//DEBUG_LOG("New: " << scene.linearVelocities[p.rigidBodyIndex1].x << ", " << scene.linearVelocities[p.rigidBodyIndex1].y << ", " << scene.linearVelocities[p.rigidBodyIndex1].z << "\n");
 	}
 }
 
@@ -221,6 +221,7 @@ void applyRigidBodyPhysics(Scene3D& scene)
 	glm::quat debugAngularVelocity = glm::quat(0, angularVelocity.x, angularVelocity.y, angularVelocity.z);
 
 	numContacts = 0;
+
 	for (int i = 0; i < scene.inverseMasses.size(); i++)
 	{
 		if (scene.inverseMasses[i] != -1.0f)
@@ -228,10 +229,6 @@ void applyRigidBodyPhysics(Scene3D& scene)
 			//If it has an inverse mass then it's a rigid body.
 			applyFroces(scene, i);
 			calculateCollisions(scene, i);
-			//if(numContacts > 0 && counter % 100 == 0)DEBUG_LOG("NUM CONTACTS: " << numContacts);
-
-			resolveCollisions(scene);
-			resolveInterpenetration(scene);
 
 			//velocity -> updated position
 			scene.positions[i] += scene.linearVelocities[i] * fixedTimeStep;
@@ -242,7 +239,23 @@ void applyRigidBodyPhysics(Scene3D& scene)
 
 		}
 	}
-	
+	resolveCollisions(scene);
+	resolveInterpenetration(scene);
+
+	for (int i = 0; i < scene.inverseMasses.size(); i++)
+	{
+		if (scene.inverseMasses[i] != -1.0f)
+		{
+
+			//velocity -> updated position
+			scene.positions[i] += scene.linearVelocities[i] * fixedTimeStep;
+
+
+			//@NOTE: Somehow I need to multiply by TimeStep twise for the velocity to be in degrees per seconds. Looks wrong but this works for now.
+			scene.orientations[i] = glm::normalize(scene.orientations[i] + fixedTimeStep * fixedTimeStep / 2.0f * (scene.angularVelocities[i] + debugAngularVelocity) * scene.orientations[i]);
+
+		}
+	}
 }
 
 void physicsDrawIMGUI()
