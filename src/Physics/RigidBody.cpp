@@ -45,6 +45,7 @@ typedef struct {
 	glm::vec3 closingVelocity;
 	glm::vec3 contactPosition;
 	glm::vec3 contactNormal;
+	glm::vec3 desiredVelocityChange;
 	float penetrationDepth;
 }ContactPoint;
 
@@ -131,7 +132,9 @@ void calculateCollisions(Scene3D& scene, unsigned int index)
 						glm::quat& angVelQ = scene.angularVelocities[index];
 						glm::vec3 angVel = glm::vec3(angVelQ.x, angVelQ.y, angVelQ.z);
 						
-						contactPoints[numContacts - 1].closingVelocity = glm::cross(angVel, contactPoints[numContacts - 1].contactPosition - scene.positions[index]) + scene.linearVelocities[index];
+						//contactPoints[numContacts - 1].closingVelocity = glm::cross(angVel, contactPoints[numContacts - 1].contactPosition - scene.positions[index]) + scene.linearVelocities[index];
+						
+						contactPoints[numContacts - 1].closingVelocity = scene.linearVelocities[index];
 					}
 				}
 			}
@@ -143,6 +146,7 @@ void calculateCollisions(Scene3D& scene, unsigned int index)
 
 void resolveCollisions(Scene3D& scene)
 {
+	glm::vec3 changeInVelocity = glm::vec3(0);
 	for (int i = 0; i < numContacts; i++)
 	{
 		ContactPoint& p = contactPoints[i];
@@ -153,7 +157,7 @@ void resolveCollisions(Scene3D& scene)
 			closingVelocity = glm::dot(p.closingVelocity, p.contactNormal) * p.contactNormal;
 		}
 
-		glm::vec3 impulse = -closingVelocity * (1 + restitution);
+		glm::vec3 impulse = (-closingVelocity * (1 + restitution)) / scene.inverseMasses[p.rigidBodyIndex1];
 
 #define VELOCITY_PER_IMPULSE 1.0f
 
@@ -161,14 +165,32 @@ void resolveCollisions(Scene3D& scene)
 		//u = (qrel) X g
 		//glm::vec3 angularImpulse = TO_WORLD_SPACE(scene.inverseInertiaTensors[p.rigidBodyIndex1]) * u;
 		//DEBUG_LOG("Prev: " << scene.linearVelocities[p.rigidBodyIndex1].x << ", " << scene.linearVelocities[p.rigidBodyIndex1].y << ", " << scene.linearVelocities[p.rigidBodyIndex1].z << "\n");
-		scene.linearVelocities[p.rigidBodyIndex1] += linearImpulse;
+		p.desiredVelocityChange = linearImpulse;
+		if (glm::length(linearImpulse) >= 5)
+		{
+			DEBUG_LOG("%f", glm::length(linearImpulse));
+		}
+		glm::vec3 deltaVel = p.desiredVelocityChange - glm::dot(changeInVelocity, p.contactNormal) * p.contactNormal;
+		if (glm::dot(deltaVel, p.contactNormal) > 0)
+		{
+			changeInVelocity += deltaVel;
+			scene.linearVelocities[p.rigidBodyIndex1] += deltaVel;
+		}
 		//DEBUG_LOG("New: " << scene.linearVelocities[p.rigidBodyIndex1].x << ", " << scene.linearVelocities[p.rigidBodyIndex1].y << ", " << scene.linearVelocities[p.rigidBodyIndex1].z << "\n");
 	}
 }
 
 void resolveInterpenetration(Scene3D& scene)
 {
+	float maxPenetration = 0.0f;
+	for (int i = 0; i < numContacts; i++)
+	{
+		if (contactPoints[i].penetrationDepth > maxPenetration)
+			maxPenetration = contactPoints[i].penetrationDepth;
+	}
 
+	//@TODO: temporary hack to test if it is the penetration that messes things up
+	scene.positions[0] += contactPoints[0].contactNormal * maxPenetration;
 }
 
 void applyRigidBodyPhysics(Scene3D& scene)
