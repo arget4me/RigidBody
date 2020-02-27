@@ -61,7 +61,7 @@ float restitution = 0.35f;
 float fixedTimeStep = 1.0f / 60.0f;
 float dampening = 0.99f;
 
-glm::vec3 gravity = glm::vec3(0.0f, -2.5f, 0.0f);
+glm::vec3 gravity = glm::vec3(0.0f, -6.0f, 0.0f);
 
 
 //Test RigidBody ------
