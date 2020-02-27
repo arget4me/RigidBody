@@ -146,7 +146,7 @@ void calculateCollisions(Scene3D& scene, unsigned int index)
 void resolveCollisions(Scene3D& scene)
 {
 	//@TODO: make this check be rigid body specific, now it only works with one rigid body in the scene.
-	glm::vec3 changeInVelocity = glm::vec3(0);
+	//glm::vec3 changeInVelocity = glm::vec3(0);
 
 	for (int i = 0; i < numContacts; i++)
 	{
@@ -187,13 +187,13 @@ void resolveCollisions(Scene3D& scene)
 		float l_clo = glm::length(closingVelocity);
 		float l_lin = glm::length(linearImpulse);
 		
-		p.desiredVelocityChange = linearImpulse;
-		glm::vec3 deltaVel = p.desiredVelocityChange - glm::dot(changeInVelocity, p.contactNormal) * p.contactNormal ;
-		if (glm::dot(deltaVel, p.contactNormal) > 0)
-		{
-			changeInVelocity += deltaVel;
-			scene.linearVelocities[p.rigidBodyIndex1] += deltaVel;
-		}
+		//p.desiredVelocityChange = linearImpulse;
+		//glm::vec3 deltaVel = p.desiredVelocityChange - glm::dot(changeInVelocity, p.contactNormal) * p.contactNormal ;
+		//if (glm::dot(deltaVel, p.contactNormal) > 0)
+		//{
+			//changeInVelocity += deltaVel;
+			scene.linearVelocities[p.rigidBodyIndex1] += linearImpulse;
+		//}
 		
 	}
 }
