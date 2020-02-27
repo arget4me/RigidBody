@@ -19,7 +19,7 @@ namespace ArgetRenderer
 		std::vector<unsigned int> color_index;
 		std::vector<glm::quat> angularVelocities;
 		std::vector<glm::vec3> linearVelocities;
-		std::vector<glm::mat4> inverseInertiaTensors;
+		std::vector<glm::mat3> inverseInertiaTensors;
 		std::vector<float> inverseMasses;
 	}Scene3D;
 
@@ -39,7 +39,7 @@ namespace ArgetRenderer
 
 	void scaleObject(Scene3D& scene, unsigned int ID, const glm::vec3 scale);
 
-	void setRigidBody(Scene3D& scene, unsigned int ID, const float inverseMass, const glm::mat4 inverseInertiaTensor);
+	void setRigidBody(Scene3D& scene, unsigned int ID, const float inverseMass, const glm::mat3 inverseInertiaTensor);
 
 };
 #endif 
