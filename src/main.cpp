@@ -113,20 +113,38 @@ int main(int argc, char* argv[])
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
-		//Update
-		ArgetRenderer::applyRigidBodyPhysics(scene);
-
+		
 		//Draw
 		ImGui_ImplGlfwGL3_NewFrame();
-		if (ImGui::Button("Restart Scene"))
-		{
-			//Setup scene
-			ArgetRenderer::Scene3D new_scene;
-			ArgetRenderer::setupScene(new_scene);
-			scene = new_scene;
+		
+		static bool apply_physics = false;
+		if (!apply_physics) {
+			if (ImGui::Button("Start"))
+			{
+				//Start simulation
+				apply_physics = true;
+			}
+			static glm::vec3 euler_angles_debug = glm::vec3(0.6f, 0.0f, 0.4f);
+			ImGui::SliderFloat3("Rotation", &euler_angles_debug[0], -1.0f, 1.0f, "%.1f");
+			scene.orientations[0] = glm::quat(euler_angles_debug);
 		}
+		else
+		{
+			if (ImGui::Button("Reset"))
+			{
+				//Setup scene
+				ArgetRenderer::Scene3D new_scene;
+				ArgetRenderer::setupScene(new_scene);
+				scene = new_scene;
+				apply_physics = false;
+			}
+			//Update
+			ArgetRenderer::applyRigidBodyPhysics(scene);
+
+		}
+
 		ArgetRenderer::physicsDrawIMGUI();
-		ArgetRenderer::rendererDrawIMGUI();
+		//ArgetRenderer::rendererDrawIMGUI();
 		ImGui::Render();
 		
 		ArgetRenderer::renderScene(scene);

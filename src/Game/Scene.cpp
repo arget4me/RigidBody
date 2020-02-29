@@ -22,8 +22,14 @@ namespace ArgetRenderer
 	void setupScene(Scene3D& scene)
 	{
 		//Test rigid body -----
-		addObject(scene, GLOBAL_BOX_ID, FALLING_BOX_POS, glm::vec3(1.0f), quatIdentity(), 0);
-		setRigidBody(scene, scene.positions.size() - 1, 1.0f / 10.0f, glm::mat4(1.0f));
+		float cubeSize = 1.0f;
+		float cubeMass = 10.0f;
+		addObject(scene, GLOBAL_BOX_ID, FALLING_BOX_POS, glm::vec3(cubeSize), quatIdentity() + glm::quat(0, 1, 0, 2)* quatIdentity() /2.0f, 0);
+		glm::mat3 cubeInertiaTensor = glm::mat3(1.0f);
+		cubeInertiaTensor[0][0] = 1.0f / 12.0f * cubeMass * (cubeSize * cubeSize + cubeSize * cubeSize);
+		cubeInertiaTensor[1][1] = 1.0f / 12.0f * cubeMass * (cubeSize * cubeSize + cubeSize * cubeSize);
+		cubeInertiaTensor[2][2] = 1.0f / 12.0f * cubeMass * (cubeSize * cubeSize + cubeSize * cubeSize);
+		setRigidBody(scene, scene.positions.size() - 1, 1.0f / cubeMass, glm::inverse(cubeInertiaTensor));
 
 		//---------------------
 
@@ -42,7 +48,7 @@ namespace ArgetRenderer
 		scene.inverseMasses.push_back(-1.0f);
 		scene.angularVelocities.push_back(glm::quat(0.0f, 0.0f, 0.0f, 0.0f));
 		scene.linearVelocities.push_back(glm::vec3(0.0f));
-		scene.inverseInertiaTensors.push_back(glm::mat4(1.0f));
+		scene.inverseInertiaTensors.push_back(glm::mat3(1.0f));
 	}
 
 	void scaleObject(Scene3D& scene, unsigned int ID, const glm::vec3 scale)
@@ -51,7 +57,7 @@ namespace ArgetRenderer
 		scene.sizes[ID] = scale;
 	}
 
-	void setRigidBody(Scene3D& scene, unsigned int ID, const float inverseMass, const glm::mat4 inverseInertiaTensor)
+	void setRigidBody(Scene3D& scene, unsigned int ID, const float inverseMass, const glm::mat3 inverseInertiaTensor)
 	{
 		if (ID >= scene.sizes.size())return;
 		scene.inverseMasses[ID] = inverseMass;
