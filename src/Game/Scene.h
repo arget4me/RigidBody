@@ -21,6 +21,7 @@ namespace ArgetRenderer
 		std::vector<glm::vec3> linearVelocities;
 		std::vector<glm::mat3> inverseInertiaTensors;
 		std::vector<float> inverseMasses;
+		std::vector<glm::vec3> penetrations;
 	}Scene3D;
 
 
@@ -35,11 +36,13 @@ namespace ArgetRenderer
 
 	void setupScene(Scene3D& scene);
 
-	void addObject(Scene3D& scene, const unsigned int modelID, const glm::vec3 objectPosition, const glm::vec3 const size, glm::quat objectOrientation, const unsigned int color_index);
+	void addObject(Scene3D& scene, const unsigned int modelID, const glm::vec3 objectPosition, const glm::vec3 size, glm::quat objectOrientation, const unsigned int color_index);
 
 	void scaleObject(Scene3D& scene, unsigned int ID, const glm::vec3 scale);
 
-	void setRigidBody(Scene3D& scene, unsigned int ID, const float inverseMass, const glm::mat3 inverseInertiaTensor);
+	void setRigidBody(Scene3D& scene, unsigned int ID, const float mass, const glm::mat3& inertiaTensor);
+	
+	void setRigidBodyBox(Scene3D& scene, unsigned int ID, const float cubeMass, const float cubeSize);
 
 };
 #endif 

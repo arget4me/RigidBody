@@ -52,7 +52,8 @@ typedef struct {
 }ContactPoint;
 
 #define MAX_NUM_CONTACTS 100
-ContactPoint contactPoints[100];
+ContactPoint contactPoints[4000];
+ContactPoint resolvePenetrationsPoints[1000];
 unsigned int numContacts = 0;
 int counter = 0;
 
@@ -113,7 +114,8 @@ void calculateCollisions(Scene3D& scene, unsigned int index)
 				/*------------- check collision with plane -------------*/
 				
 				//TODO: represent plane as normal and offset
-				glm::vec3 planeNormal = glm::vec3(0, 1, 0);//glm::vec3(toMat4(scene.orientations[y]) * glm::vec4(0, 0, -1, 0));
+				//glm::vec3 planeNormal = glm::vec3(0, 1, 0);//glm::vec3(toMat4(scene.orientations[y]) * glm::vec4(0, 0, -1, 0));
+				glm::vec3 planeNormal = glm::vec3(toMat4(scene.orientations[y]) * glm::vec4(0, 0, -1, 0));
 				float planeOffset = glm::dot(scene.positions[y], planeNormal);
 				float vertexDistance = glm::dot(transformedPoint, planeNormal);
 
@@ -152,63 +154,80 @@ void resolveCollisions(Scene3D& scene)
 	{
 		ContactPoint& p = contactPoints[i];
 		glm::vec3 closingVelocity;
-		//If only one rigid body in collision
-		if (p.rigidBodyIndex2 == -1)
-		{
-			closingVelocity = glm::dot(p.closingVelocity, p.contactNormal) * p.contactNormal;
-		}
+		glm::vec3 desiredVelocity;
+		
+		
 
-		//@TODO:Also include angular part, linear only uses inverseMass
+		closingVelocity = glm::dot(p.closingVelocity, p.contactNormal) * p.contactNormal;
+		desiredVelocity = (-closingVelocity * (1 + restitution));
+
+		//Calculate velocity per unit torque
 		glm::vec3 relPoint = p.contactPosition - scene.positions[p.rigidBodyIndex1];
-
 		glm::vec3 torquePerUnit = glm::cross(relPoint, p.contactNormal);
 		glm::mat3 rotationMat = glm::toMat3(scene.orientations[p.rigidBodyIndex1]);
-		
 		glm::vec3 angVelPerUnit = rotationMat * torquePerUnit;
 		angVelPerUnit = scene.inverseInertiaTensors[p.rigidBodyIndex1] * angVelPerUnit;
 		angVelPerUnit = glm::inverse(rotationMat) * angVelPerUnit;
 		glm::vec3 linearVelPerUnit = glm::cross(angVelPerUnit, relPoint);
 
+
 		float linFromAngPerUnitImpulse = glm::max(glm::dot(linearVelPerUnit, p.contactNormal), 0.0f);
-
 		float velPerUnitImpulse = scene.inverseMasses[p.rigidBodyIndex1] + linFromAngPerUnitImpulse;
+		
+		//If two rigid bodies are colliding
+		if (p.rigidBodyIndex2 != -1)
+		{
+			//Add contribution from other rigid body
+		}
 
-		float impulse = ( -glm::dot(closingVelocity, p.contactNormal) * (1 + restitution) ) / velPerUnitImpulse;
+	
+		//Calculate impulse
+		glm::vec3 impulse = desiredVelocity / velPerUnitImpulse;
 
-		glm::vec3 impulsiveTorque = glm::cross(relPoint, impulse * p.contactNormal) ;
-		//glm::vec3 rotationChange = worldInverseInertiaTensor * impulsiveTorque;
+
+
+		//Update Angular velocity
+		glm::vec3 impulsiveTorque = glm::cross(relPoint, impulse) ;
 		glm::vec3 rotationChange = rotationMat * impulsiveTorque;
 		rotationChange = scene.inverseInertiaTensors[p.rigidBodyIndex1] * rotationChange;
 		rotationChange = glm::inverse(rotationMat) * rotationChange;
-
 		scene.angularVelocities[p.rigidBodyIndex1] += glm::quat(0, rotationChange.x, rotationChange.y, rotationChange.z);
 
-		glm::vec3 linearImpulse = scene.inverseMasses[p.rigidBodyIndex1] * impulse * p.contactNormal;
-		float l_clo = glm::length(closingVelocity);
-		float l_lin = glm::length(linearImpulse);
+		//Update linear velocity
+		glm::vec3 linearImpulse = scene.inverseMasses[p.rigidBodyIndex1] * impulse;
 		
-		//p.desiredVelocityChange = linearImpulse;
-		//glm::vec3 deltaVel = p.desiredVelocityChange - glm::dot(changeInVelocity, p.contactNormal) * p.contactNormal ;
-		//if (glm::dot(deltaVel, p.contactNormal) > 0)
-		//{
-			//changeInVelocity += deltaVel;
-			scene.linearVelocities[p.rigidBodyIndex1] += linearImpulse;
-		//}
+		scene.linearVelocities[p.rigidBodyIndex1] += linearImpulse;
 		
 	}
 }
 
+
+
 void resolveInterpenetration(Scene3D& scene)
 {
+	//@TODO: temporary hack to test if it is the penetration that messes things up
+
 	float maxPenetration = 0.0f;
 	for (int i = 0; i < numContacts; i++)
 	{
-		if (contactPoints[i].penetrationDepth > maxPenetration)
-			maxPenetration = contactPoints[i].penetrationDepth;
+		ContactPoint& p = contactPoints[i];
+
+		if (p.penetrationDepth > glm::length(scene.penetrations[p.rigidBodyIndex1]))
+			scene.penetrations[p.rigidBodyIndex1] = p.penetrationDepth * p.contactNormal;
+
+		if (p.rigidBodyIndex2 != -1)
+		{
+			if (p.penetrationDepth > glm::length(scene.penetrations[p.rigidBodyIndex2]))
+				scene.penetrations[p.rigidBodyIndex2] = p.penetrationDepth * p.contactNormal;
+		}
 	}
 
-	//@TODO: temporary hack to test if it is the penetration that messes things up
-	scene.positions[0] += contactPoints[0].contactNormal * maxPenetration;
+	int numObjects = scene.positions.size();
+	for (int i = 0; i < numObjects; i++)
+	{
+		scene.positions[i] += scene.penetrations[i];
+	}
+
 }
 
 void applyRigidBodyPhysics(Scene3D& scene)
@@ -222,9 +241,16 @@ void applyRigidBodyPhysics(Scene3D& scene)
 	glm::quat debugAngularVelocity = glm::quat(0, angularVelocity.x, angularVelocity.y, angularVelocity.z);
 
 	numContacts = 0;
+	//@Note: temporary hack to test multiple objects, need to resolve each penetration
+	scene.penetrations.clear();
+	int numObjects = scene.inverseMasses.size();
 
-	for (int i = 0; i < scene.inverseMasses.size(); i++)
+
+	for (int i = 0; i < numObjects; i++)
 	{
+		scene.penetrations.push_back(glm::vec3(0.0f));//same hack as @Note
+
+
 		if (scene.inverseMasses[i] != -1.0f)
 		{
 			//If it has an inverse mass then it's a rigid body.
@@ -235,7 +261,7 @@ void applyRigidBodyPhysics(Scene3D& scene)
 	resolveCollisions(scene);
 	resolveInterpenetration(scene);
 
-	for (int i = 0; i < scene.inverseMasses.size(); i++)
+	for (int i = 0; i < numObjects; i++)
 	{
 		if (scene.inverseMasses[i] != -1.0f)
 		{

@@ -18,9 +18,12 @@
 #include "Renderer/Renderer3D.h"
 #include "Physics/RigidBody.h"
 
+#include <cstdlib>
+#include "Renderer/Box.h"
+
 //Globals
 int global_height = 720;
-int global_width = 1080;
+int global_width = 1280;
 
 static void error_callback(int error, const char* description)
 {
@@ -82,7 +85,8 @@ int main(int argc, char* argv[])
 	ArgetRenderer::Scene3D scene;
 	ArgetRenderer::setupScene(scene);
 
-#define FPS_TIMED 0
+	int FPS = 0;
+#define FPS_TIMED 1
 #if FPS_TIMED
 	double previousTime = glfwGetTime();
 	int frameCount = 0;
@@ -100,6 +104,7 @@ int main(int argc, char* argv[])
 			// Display the frame count here any way you want.
 			//displayFPS(frameCount);
 			DEBUG_LOG(frameCount << "\n");
+			FPS = frameCount;
 
 			frameCount = 0;
 			previousTime = currentTime;
@@ -116,7 +121,7 @@ int main(int argc, char* argv[])
 		
 		//Draw
 		ImGui_ImplGlfwGL3_NewFrame();
-		
+		ImGui::Text("FPS: %d", FPS);
 		static bool apply_physics = false;
 		if (!apply_physics) {
 			if (ImGui::Button("Start"))
@@ -126,7 +131,16 @@ int main(int argc, char* argv[])
 			}
 			static glm::vec3 euler_angles_debug = glm::vec3(0.6f, 0.0f, 0.4f);
 			ImGui::SliderFloat3("Rotation", &euler_angles_debug[0], -1.0f, 1.0f, "%.1f");
-			scene.orientations[0] = glm::quat(euler_angles_debug);
+			for (int i = 0; i < scene.orientations.size(); i++)
+			{
+				if (scene.inverseMasses[i] != -1.0f)
+				{
+					scene.orientations[i] = glm::quat(euler_angles_debug);
+
+						
+				}
+
+			}
 		}
 		else
 		{
@@ -138,6 +152,20 @@ int main(int argc, char* argv[])
 				scene = new_scene;
 				apply_physics = false;
 			}
+
+			if (ImGui::Button("SpawnBox"))
+			{
+				//Spawn box at random orientation
+				ArgetRenderer::addObject(scene, 
+					ArgetRenderer::GLOBAL_BOX_ID, 
+					glm::vec3(-2 + (rand() % 4), 2, 0 + (rand() % 4)),
+					glm::vec3(1.0f),
+					glm::normalize(ArgetRenderer::quatIdentity() + glm::quat(0, rand()%100, rand()%100, rand()%100) * ArgetRenderer::quatIdentity() / 2.0f),
+					ArgetRenderer::GLOBAL_BOX_COLOR);
+				setRigidBodyBox(scene, scene.positions.size() - 1, 10.0f, 1.0f);
+			}
+
+
 			//Update
 			ArgetRenderer::applyRigidBodyPhysics(scene);
 
