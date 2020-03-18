@@ -1,3 +1,4 @@
+#include <Windows.h>
 #include "imgui.h"
 #include "imgui_impl_glfw_gl3.h"
 
@@ -42,22 +43,38 @@ static void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 	global_width = width;
 	global_height = height;
 }
-
-int main(int argc, char* argv[])
+#if 0
+//int main(int argc, char* argv[])
+#else
+INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
+	PSTR lpCmdLine, INT nCmdShow)
+#endif
 {
 	glfwSetErrorCallback(error_callback);
 	if (!glfwInit())
 		exit(EXIT_FAILURE);
 
+	
+#if 0
 	GLFWwindow* window = glfwCreateWindow(global_width, global_height, "Box Rigid Body Physics", NULL, NULL);
-	//glfwSetKeyCallback(window, key_callback);
-	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+#else
+	GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+	const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+	glfwWindowHint(GLFW_DECORATED, 0);
+
+	GLFWwindow* window = glfwCreateWindow(mode->width, mode->height, "Box Rigid Body Physics", NULL, NULL);
+	glViewport(0, 0, mode->width, mode->height);
+#endif
+
+
 
 	if (!window) {
 		glfwTerminate();
 		exit(EXIT_FAILURE);
 	}
 	glfwMakeContextCurrent(window);
+	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+	
 	
 	//Activate V-sync
 	glfwSwapInterval(1);

@@ -171,7 +171,8 @@ void resolveCollisions(Scene3D& scene)
 		glm::vec3 linearVelPerUnit = glm::cross(angVelPerUnit, relPoint);
 
 
-		float linFromAngPerUnitImpulse = glm::max(glm::dot(linearVelPerUnit, p.contactNormal), 0.0f);
+		//float linFromAngPerUnitImpulse = glm::max(glm::dot(linearVelPerUnit, p.contactNormal), 0.0f);
+		float linFromAngPerUnitImpulse = glm::dot(linearVelPerUnit, p.contactNormal);
 		float velPerUnitImpulse = scene.inverseMasses[p.rigidBodyIndex1] + linFromAngPerUnitImpulse;
 		
 		//If two rigid bodies are colliding
