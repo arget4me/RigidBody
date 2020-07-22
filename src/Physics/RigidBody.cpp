@@ -55,7 +55,6 @@ typedef struct {
 ContactPoint contactPoints[4000];
 ContactPoint resolvePenetrationsPoints[1000];
 unsigned int numContacts = 0;
-int counter = 0;
 
 float restitution = 0.1f;
 
@@ -64,27 +63,13 @@ float dampening = 0.99f;
 
 glm::vec3 gravity = glm::vec3(0.0f, -6.0f, 0.0f);
 
-
-//Test RigidBody ------
-glm::vec3 rotationAxis = glm::vec3(0.0f, 1.0f, 0.0f); float rateOfRotation = 0.0f;
-//---------------------
-
-inline void applyFroces(Scene3D& scene, unsigned int index)
+inline void applyForces(Scene3D& scene, unsigned int index)
 {
 	//apply gravit
 	scene.linearVelocities[index] = scene.linearVelocities[index]*dampening + gravity * fixedTimeStep;
 	
-	
-
-	//angular velocity -> updated orientation
-	//glm::vec3 angularVelocity;
-	//if (glm::length(rotationAxis) != 0)angularVelocity = rateOfRotation * glm::normalize(rotationAxis);
-	//else angularVelocity = glm::vec3(0);
-
+	//only dampen angular, no new force is applied here
 	scene.angularVelocities[index] *= dampening;
-	
-	//glm::quat(0, angularVelocity.x, angularVelocity.y, angularVelocity.z);
-
 }
 
 void calculateCollisions(Scene3D& scene, unsigned int index)
@@ -93,7 +78,6 @@ void calculateCollisions(Scene3D& scene, unsigned int index)
 
 
 	//BOX - PLANE collision
-	counter++;
 	//TODO: use primitives for physics instead of model
 	if (scene.modelID[index] == GLOBAL_BOX_ID)
 	{
@@ -114,7 +98,6 @@ void calculateCollisions(Scene3D& scene, unsigned int index)
 				/*------------- check collision with plane -------------*/
 				
 				//TODO: represent plane as normal and offset
-				//glm::vec3 planeNormal = glm::vec3(0, 1, 0);//glm::vec3(toMat4(scene.orientations[y]) * glm::vec4(0, 0, -1, 0));
 				glm::vec3 planeNormal = glm::vec3(toMat4(scene.orientations[y]) * glm::vec4(0, 0, -1, 0));
 				float planeOffset = glm::dot(scene.positions[y], planeNormal);
 				float vertexDistance = glm::dot(transformedPoint, planeNormal);
@@ -130,12 +113,10 @@ void calculateCollisions(Scene3D& scene, unsigned int index)
 						contactPoints[numContacts - 1].rigidBodyIndex1 = index;
 						contactPoints[numContacts - 1].rigidBodyIndex2 = -1; // only one rigid body
 						glm::quat& angVelQ = scene.angularVelocities[index];
-						glm::vec3 angVel = glm::vec3(angVelQ.x, angVelQ.y, angVelQ.z);// * fixedTimeStep;
+						glm::vec3 angVel = glm::vec3(angVelQ.x, angVelQ.y, angVelQ.z);
 						
 						contactPoints[numContacts - 1].closingVelocity = glm::cross(angVel, contactPoints[numContacts - 1].contactPosition - scene.positions[index]) + scene.linearVelocities[index];
-						
-						
-							//contactPoints[numContacts - 1].closingVelocity = scene.linearVelocities[index];//@NOTE: This doesn't account for angular velocity
+						//contactPoints[numContacts - 1].closingVelocity = scene.linearVelocities[index];//@NOTE: This doesn't account for angular velocity
 					}
 				}
 			}
@@ -147,9 +128,6 @@ void calculateCollisions(Scene3D& scene, unsigned int index)
 
 void resolveCollisions(Scene3D& scene)
 {
-	//@TODO: make this check be rigid body specific, now it only works with one rigid body in the scene.
-	//glm::vec3 changeInVelocity = glm::vec3(0);
-
 	for (int i = 0; i < numContacts; i++)
 	{
 		ContactPoint& p = contactPoints[i];
@@ -178,6 +156,7 @@ void resolveCollisions(Scene3D& scene)
 		//If two rigid bodies are colliding
 		if (p.rigidBodyIndex2 != -1)
 		{
+			//@TODO implement physics between rigid bodies
 			//Add contribution from other rigid body
 		}
 
@@ -206,7 +185,7 @@ void resolveCollisions(Scene3D& scene)
 
 void resolveInterpenetration(Scene3D& scene)
 {
-	//@TODO: temporary hack to test if it is the penetration that messes things up
+	//@TODO: temporary hack to test if it is the penetration that messes things up: It does
 
 	float maxPenetration = 0.0f;
 	for (int i = 0; i < numContacts; i++)
@@ -235,33 +214,32 @@ void applyRigidBodyPhysics(Scene3D& scene)
 {
 	
 	//angular velocity -> updated orientation
-	glm::vec3 angularVelocity;
-	if (glm::length(rotationAxis) != 0)angularVelocity = rateOfRotation * glm::normalize(rotationAxis);
-	else angularVelocity = glm::vec3(0);
-
-	glm::quat debugAngularVelocity = glm::quat(0, angularVelocity.x, angularVelocity.y, angularVelocity.z);
+	glm::vec3 angularVelocity = glm::vec3(0);
 
 	numContacts = 0;
-	//@Note: temporary hack to test multiple objects, need to resolve each penetration
+	//@Note: hack to test multiple objects, need to resolve each penetration
 	scene.penetrations.clear();
 	int numObjects = scene.inverseMasses.size();
 
 
 	for (int i = 0; i < numObjects; i++)
 	{
-		scene.penetrations.push_back(glm::vec3(0.0f));//same hack as @Note
-
+		scene.penetrations.push_back(glm::vec3(0.0f));//same hack as @Note, this is to reset the penetration depth to 0.
 
 		if (scene.inverseMasses[i] != -1.0f)
 		{
 			//If it has an inverse mass then it's a rigid body.
-			applyFroces(scene, i);
+			applyForces(scene, i);
+
 			calculateCollisions(scene, i);
 		}
 	}
+
 	resolveCollisions(scene);
+
 	resolveInterpenetration(scene);
 
+	//Update objects
 	for (int i = 0; i < numObjects; i++)
 	{
 		if (scene.inverseMasses[i] != -1.0f)
@@ -270,9 +248,8 @@ void applyRigidBodyPhysics(Scene3D& scene)
 			//velocity -> updated position
 			scene.positions[i] += scene.linearVelocities[i] * fixedTimeStep;
 
-
 			//Update orientation
-			scene.orientations[i] = glm::normalize(scene.orientations[i] + fixedTimeStep / 2.0f * (scene.angularVelocities[i] + debugAngularVelocity) * scene.orientations[i]);
+			scene.orientations[i] = glm::normalize(scene.orientations[i] + fixedTimeStep / 2.0f * scene.angularVelocities[i] * scene.orientations[i]);
 
 		}
 	}
@@ -282,16 +259,8 @@ void physicsDrawIMGUI()
 {
 	ImGui::Text("Physics");
 	ImGui::SliderFloat3("Gravity", &gravity[0], -10.0f, 10.0f, "%.2f");
-	//ImGui::SliderFloat("Gravity: y", &gravity[1], -10.0f, 10.0f);
-	//ImGui::SliderFloat("Gravity: z", &gravity[2], -10.0f, 10.0f);
 	ImGui::SliderFloat("Velocity dampening", &dampening, 0.5f, 1.0f, "%.2f");
-	//ImGui::SliderFloat3("Axis of rotation", &rotationAxis[0], -1.0f, 1.0f, "%.1f");
-	//ImGui::SliderFloat("Rate of rotation", &rateOfRotation, 0.0f, 360.0f, "%.1f");
 	ImGui::SliderFloat("Restitution", &restitution, 0.1f, 2.0f, "%.2f");
-
-
-
-
 }
 
 

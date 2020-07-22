@@ -54,14 +54,7 @@ namespace ArgetRenderer
 		float cubeMass = 10.0f;
 		addObject(scene, GLOBAL_BOX_ID, FALLING_BOX_POS, glm::vec3(cubeSize), quatIdentity() + glm::quat(0, 1, 0, 2)* quatIdentity() /2.0f, 0);		
 		setRigidBodyBox(scene, scene.positions.size() - 1, cubeMass, cubeSize);
-
-
-		/*addObject(scene, GLOBAL_BOX_ID, FALLING_BOX_POS + glm::vec3(-4, 0, 0), glm::vec3(cubeSize), quatIdentity() + glm::quat(0, 1, 0, 2) * quatIdentity() / 2.0f, 0);
-		setRigidBodyBox(scene, scene.positions.size() - 1, cubeMass, cubeSize);*/
-
-		//---------------------
-
-		//addObject(scene, GLOBAL_BOX_ID, RESTING_BOX_POS, glm::vec3(0.5f), quatIdentity(), 0);
+		
 		addObject(scene, GLOBAL_PLANE_ID, FLOOR_POS, glm::vec3(1000.0f), glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)), 1);
 	}
 
