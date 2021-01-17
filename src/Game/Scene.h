@@ -22,6 +22,7 @@ namespace ArgetRenderer
 		std::vector<glm::mat3> inverseInertiaTensors;
 		std::vector<float> inverseMasses;
 		std::vector<glm::vec3> penetrations;
+		std::vector<bool> active;
 	}Scene3D;
 
 

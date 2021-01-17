@@ -71,6 +71,7 @@ namespace ArgetRenderer
 		scene.angularVelocities.push_back(glm::quat(0.0f, 0.0f, 0.0f, 0.0f));
 		scene.linearVelocities.push_back(glm::vec3(0.0f));
 		scene.inverseInertiaTensors.push_back(glm::mat3(1.0f));
+		scene.active.push_back(true);
 	}
 
 	void scaleObject(Scene3D& scene, unsigned int ID, const glm::vec3 scale)
