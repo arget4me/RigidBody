@@ -74,54 +74,103 @@ inline void applyForces(Scene3D& scene, unsigned int index)
 
 void calculateCollisions(Scene3D& scene, unsigned int index)
 {
-	//group in pairs of colliding points
-
-
-	//BOX - PLANE collision
 	//TODO: use primitives for physics instead of model
-	if (scene.modelID[index] == GLOBAL_BOX_ID)
+	if (scene.modelID[index] != GLOBAL_BOX_ID) return;
+
+	glm::mat4 modelMatrix = glm::mat4(1.0f);
+	modelMatrix = glm::translate(modelMatrix, scene.positions[index]);
+	modelMatrix = modelMatrix * toMat4(scene.orientations[index]);
+	modelMatrix = glm::scale(modelMatrix, scene.sizes[index]);
+
+
+	// BOX - PLANE collision
+	for (int i = 0; i < sizeof(box_points) / sizeof(glm::vec3); i++)
 	{
-		glm::mat4 modelMatrix = glm::mat4(1.0f);
-		//glm::mat4 rotation = toMat4(scene.orientations[i]);
-		modelMatrix = glm::translate(modelMatrix, scene.positions[index]);
-		modelMatrix = modelMatrix * toMat4(scene.orientations[index]);
-		modelMatrix = glm::scale(modelMatrix, scene.sizes[index]);
-
-		for (int i = 0; i < sizeof(box_points) / sizeof(glm::vec3); i++)
+		glm::vec3 transformedPoint = glm::vec3(modelMatrix * glm::vec4(box_points[i], 1));
+		//TODO: do fancier collision detection, don't compare to each other object
+		for (int y = 0; y < scene.modelID.size(); y++)
 		{
-			glm::vec3 transformedPoint = glm::vec3(modelMatrix * glm::vec4(box_points[i], 1));
-			//TODO: do fancier collision detection, don't compare to each other object
-			for (int y = 0; y < scene.modelID.size(); y++)
-			{
-				if (y == index || scene.modelID[y] != GLOBAL_PLANE_ID)continue;
+			if (y == index || scene.modelID[y] != GLOBAL_PLANE_ID)continue;
 
-				/*------------- check collision with plane -------------*/
+			/*------------- check collision with plane -------------*/
 				
-				//TODO: represent plane as normal and offset
-				glm::vec3 planeNormal = glm::vec3(toMat4(scene.orientations[y]) * glm::vec4(0, 0, -1, 0));
-				float planeOffset = glm::dot(scene.positions[y], planeNormal);
-				float vertexDistance = glm::dot(transformedPoint, planeNormal);
+			//TODO: represent plane as normal and offset
+			glm::vec3 planeNormal = glm::vec3(toMat4(scene.orientations[y]) * glm::vec4(0, 0, -1, 0));
+			float planeOffset = glm::dot(scene.positions[y], planeNormal);
+			float vertexDistance = glm::dot(transformedPoint, planeNormal);
 
-				if (vertexDistance < planeOffset)
+			if (vertexDistance < planeOffset)
+			{
+				int newContactIndex = numContacts;
+				numContacts++;
+				if (numContacts <= MAX_NUM_CONTACTS)
 				{
-					numContacts++;
-					if (numContacts <= MAX_NUM_CONTACTS)
-					{
-						contactPoints[numContacts - 1].contactNormal = planeNormal;
-						contactPoints[numContacts - 1].contactPosition = planeNormal * glm::abs(vertexDistance - planeOffset)/2.0f + transformedPoint;
-						contactPoints[numContacts - 1].penetrationDepth = planeOffset - vertexDistance;
-						contactPoints[numContacts - 1].rigidBodyIndex1 = index;
-						contactPoints[numContacts - 1].rigidBodyIndex2 = -1; // only one rigid body
-						glm::quat& angVelQ = scene.angularVelocities[index];
-						glm::vec3 angVel = glm::vec3(angVelQ.x, angVelQ.y, angVelQ.z);
+					contactPoints[newContactIndex].contactNormal = planeNormal;
+					contactPoints[newContactIndex].contactPosition = planeNormal * glm::abs(vertexDistance - planeOffset)/2.0f + transformedPoint;
+					contactPoints[newContactIndex].penetrationDepth = planeOffset - vertexDistance;
+					contactPoints[newContactIndex].rigidBodyIndex1 = index;
+					contactPoints[newContactIndex].rigidBodyIndex2 = -1; // only one rigid body
+					glm::quat& angVelQ = scene.angularVelocities[index];
+					glm::vec3 angVel = glm::vec3(angVelQ.x, angVelQ.y, angVelQ.z);
 						
-						contactPoints[numContacts - 1].closingVelocity = glm::cross(angVel, contactPoints[numContacts - 1].contactPosition - scene.positions[index]) + scene.linearVelocities[index];
-						//contactPoints[numContacts - 1].closingVelocity = scene.linearVelocities[index];//@NOTE: This doesn't account for angular velocity
-					}
+					contactPoints[newContactIndex].closingVelocity = glm::cross(angVel, contactPoints[newContactIndex].contactPosition - scene.positions[index]) + scene.linearVelocities[index];
+					//contactPoints[numContacts - 1].closingVelocity = scene.linearVelocities[index];//@NOTE: This doesn't account for angular velocity
 				}
 			}
+
+			break;
 		}
 	}
+
+
+	//Box - Box Collision
+	for (int y = (index + 1); y < scene.modelID.size(); y++)
+	{
+		if (scene.modelID[y] != GLOBAL_BOX_ID)continue;
+
+		//Point-face collision: Use Separating axis theorem as an early out
+		//if (box_separating_axis_theorem(index, y))
+		{
+			//Potential collision
+
+		}
+
+
+
+		//Edge - edge collision
+
+
+
+		/*
+		int newContactIndex = numContacts;
+		numContacts++;
+		if (numContacts <= MAX_NUM_CONTACTS)
+		{
+			contactPoints[newContactIndex].contactNormal = planeNormal;
+			contactPoints[newContactIndex].contactPosition = planeNormal * glm::abs(vertexDistance - planeOffset) / 2.0f + transformedPoint;
+			contactPoints[newContactIndex].penetrationDepth = planeOffset - vertexDistance;
+
+			contactPoints[newContactIndex].rigidBodyIndex1 = index;
+			contactPoints[newContactIndex].rigidBodyIndex2 = y; // only one rigid body
+			{
+				glm::quat& angVelQ = scene.angularVelocities[index];
+				glm::vec3 angVel = glm::vec3(angVelQ.x, angVelQ.y, angVelQ.z);
+
+				contactPoints[newContactIndex].closingVelocity = glm::cross(angVel, contactPoints[newContactIndex].contactPosition - scene.positions[index]) + scene.linearVelocities[index];
+			}
+
+			{
+				glm::quat& angVelQ = scene.angularVelocities[y];
+				glm::vec3 angVel = glm::vec3(angVelQ.x, angVelQ.y, angVelQ.z);
+				contactPoints[newContactIndex].closingVelocity -= glm::cross(angVel, contactPoints[newContactIndex].contactPosition - scene.positions[y]) + scene.linearVelocities[y];
+			}
+		}
+		*/
+	}
+	
+	
+	
+	
 }
 
 
@@ -153,18 +202,26 @@ void resolveCollisions(Scene3D& scene)
 		float linFromAngPerUnitImpulse = glm::dot(linearVelPerUnit, p.contactNormal);
 		float velPerUnitImpulse = scene.inverseMasses[p.rigidBodyIndex1] + linFromAngPerUnitImpulse;
 		
-		//If two rigid bodies are colliding
 		if (p.rigidBodyIndex2 != -1)
 		{
-			//@TODO implement physics between rigid bodies
-			//Add contribution from other rigid body
+			//Calculate velocity per unit torque
+			glm::vec3 relPoint = p.contactPosition - scene.positions[p.rigidBodyIndex2];
+			glm::vec3 torquePerUnit = glm::cross(relPoint, p.contactNormal);
+			glm::mat3 rotationMat = glm::toMat3(scene.orientations[p.rigidBodyIndex2]);
+			glm::vec3 angVelPerUnit = rotationMat * torquePerUnit;
+			angVelPerUnit = scene.inverseInertiaTensors[p.rigidBodyIndex2] * angVelPerUnit;
+			angVelPerUnit = glm::inverse(rotationMat) * angVelPerUnit;
+			glm::vec3 linearVelPerUnit = glm::cross(angVelPerUnit, relPoint);
+
+
+			//float linFromAngPerUnitImpulse = glm::max(glm::dot(linearVelPerUnit, p.contactNormal), 0.0f);
+			float linFromAngPerUnitImpulse = glm::dot(linearVelPerUnit, p.contactNormal);
+			velPerUnitImpulse += scene.inverseMasses[p.rigidBodyIndex2] + linFromAngPerUnitImpulse;
 		}
 
 	
 		//Calculate impulse
 		glm::vec3 impulse = desiredVelocity / velPerUnitImpulse;
-
-
 
 		//Update Angular velocity
 		glm::vec3 impulsiveTorque = glm::cross(relPoint, impulse) ;
@@ -177,6 +234,29 @@ void resolveCollisions(Scene3D& scene)
 		glm::vec3 linearImpulse = scene.inverseMasses[p.rigidBodyIndex1] * impulse;
 		
 		scene.linearVelocities[p.rigidBodyIndex1] += linearImpulse;
+
+		
+		//If two rigid bodies are colliding
+		if (p.rigidBodyIndex2 != -1)
+		{
+			//Calculate impulse
+			glm::vec3 impulse = -1.0f * impulse;
+
+			//Update Angular velocity
+			glm::vec3 relPoint = p.contactPosition - scene.positions[p.rigidBodyIndex2];
+			glm::vec3 impulsiveTorque = glm::cross(relPoint, impulse);
+			glm::mat3 rotationMat = glm::toMat3(scene.orientations[p.rigidBodyIndex2]);
+			glm::vec3 rotationChange = rotationMat * impulsiveTorque;
+			rotationChange = scene.inverseInertiaTensors[p.rigidBodyIndex2] * rotationChange;
+			rotationChange = glm::inverse(rotationMat) * rotationChange;
+			scene.angularVelocities[p.rigidBodyIndex2] += glm::quat(0, rotationChange.x, rotationChange.y, rotationChange.z);
+
+			//Update linear velocity
+			glm::vec3 linearImpulse = scene.inverseMasses[p.rigidBodyIndex2] * impulse;
+
+			scene.linearVelocities[p.rigidBodyIndex2] += linearImpulse;
+
+		}
 		
 	}
 }
