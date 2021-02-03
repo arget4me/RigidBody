@@ -55,7 +55,7 @@ INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		exit(EXIT_FAILURE);
 
 	
-#if 1
+#if 0
 	GLFWwindow* window = glfwCreateWindow(global_width, global_height, "Box Rigid Body Physics", NULL, NULL);
 #else
 	GLFWmonitor* monitor = glfwGetPrimaryMonitor();
@@ -103,7 +103,7 @@ INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	ArgetRenderer::setupScene(scene);
 
 	int FPS = 0;
-#define FPS_TIMED 1
+#define FPS_TIMED 0
 #if FPS_TIMED
 	double previousTime = glfwGetTime();
 	int frameCount = 0;
@@ -138,7 +138,9 @@ INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		
 		//Draw
 		ImGui_ImplGlfwGL3_NewFrame();
+#if FPS_TIMED
 		ImGui::Text("FPS: %d", FPS);
+#endif
 		static bool apply_physics = false;
 		if (!apply_physics) {
 			if (ImGui::Button("Start"))
