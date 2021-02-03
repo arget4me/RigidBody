@@ -55,7 +55,7 @@ INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		exit(EXIT_FAILURE);
 
 	
-#if 1
+#if 0
 	GLFWwindow* window = glfwCreateWindow(global_width, global_height, "Box Rigid Body Physics", NULL, NULL);
 #else
 	GLFWmonitor* monitor = glfwGetPrimaryMonitor();
