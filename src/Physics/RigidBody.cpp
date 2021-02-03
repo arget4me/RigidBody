@@ -302,7 +302,7 @@ void calculateCollisions(Scene3D& scene, unsigned int index)
 		}
 
 
-		/*
+#if 0		
 		//Edge - edge collision
 		glm::vec3 edge_normal;
 		glm::vec3 edge_point;
@@ -351,7 +351,7 @@ void calculateCollisions(Scene3D& scene, unsigned int index)
 			contactNormal = edge_normal;
 			contactPosition = edge_point;
 		}
-		*/
+#endif		
 
 
 
