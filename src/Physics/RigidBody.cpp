@@ -302,9 +302,58 @@ void calculateCollisions(Scene3D& scene, unsigned int index)
 		}
 
 
-
+		/*
 		//Edge - edge collision
-		
+		glm::vec3 edge_normal;
+		glm::vec3 edge_point;
+		float edge_d = 0.0f;
+		for (int i = 0; i < sizeof(box_edges) / sizeof(glm::vec3); i++)
+		{
+			glm::vec3 edge_best_normal;
+			glm::vec3 edge_best_point;
+			float edge_best_d = 1000000000.0f; //Shortest distance for each edge is the possible candidate.
+			
+
+			glm::vec3 transformedEdgeA = glm::vec3(modelMatrixA_axis * glm::vec4(box_edges[i], 1)); //Line A rotated into worldspace
+			glm::vec3 edge_offsetA = glm::vec3(modelMatrixB_axis * glm::vec4(box_points[box_edges_pairs[i].y], 1)); //Line A origin, world space
+			for (int j = 0; j < sizeof(box_edges) / sizeof(glm::vec3); j++)
+			{
+				glm::vec3 transformedEdgeB = glm::vec3(modelMatrixB_axis * glm::vec4(box_edges[j], 1)); //Line B rotated into worldspace
+				glm::vec3 edge_offsetB = glm::vec3(modelMatrixB_axis * glm::vec4(box_points[box_edges_pairs[j].y], 1)); //Line B origin world space
+				float projB_amount = glm::dot(transformedEdgeA, transformedEdgeB) / glm::length(transformedEdgeB);
+				float projA_amount = glm::dot(transformedEdgeA, transformedEdgeB) / glm::length(transformedEdgeA);
+				if (projB_amount < 0 || projA_amount < 0 || projA_amount >= glm::length(transformedEdgeA) || projB_amount >= glm::length(transformedEdgeB))continue;
+				glm::vec3 projB = scene.positions[y] + edge_offsetB + projB_amount * glm::normalize(transformedEdgeB);
+				glm::vec3 projA = scene.positions[index] + edge_offsetA + projA_amount * glm::normalize(transformedEdgeA);
+				float dist = glm::length(projA - projB);
+
+				if (glm::length(scene.positions[y] - projA) < glm::length(scene.positions[y] - projB))
+				{
+					if (edge_best_d > dist)
+					{
+						edge_best_d = dist;
+						edge_best_normal = glm::normalize(projA - projB);
+						edge_best_point = projB + edge_best_normal * dist * 0.5f;
+					}
+				}
+			}
+			if (edge_best_d != 1000000000.0f && edge_best_d > edge_d)
+			{
+				edge_d = edge_best_d;
+				edge_point = edge_best_point;
+				edge_normal = edge_best_normal;
+			}
+		}
+
+		if (edge_d > penetration)
+		{
+			penetration = edge_d/2.0f;
+			contactNormal = edge_normal;
+			contactPosition = edge_point;
+		}
+		*/
+
+
 
 		if (penetration > 0.0f)
 		{
@@ -470,12 +519,12 @@ void resolveInterpenetration(Scene3D& scene)
 	{
 		ContactPoint& p = contactPoints[i];
 		if (p.penetrationDepth > glm::length(scene.penetrations[p.rigidBodyIndex1]) && scene.active[p.rigidBodyIndex1])
-			scene.penetrations[p.rigidBodyIndex1] = p.penetrationDepth * p.contactNormal;
+			scene.penetrations[p.rigidBodyIndex1] = p.penetrationDepth * p.contactNormal * 0.5f;
 
 		if (p.rigidBodyIndex2 != -1)
 		{
 			if (p.penetrationDepth > glm::length(scene.penetrations[p.rigidBodyIndex2]) && scene.active[p.rigidBodyIndex2])
-				scene.penetrations[p.rigidBodyIndex2] = -1.0f * p.penetrationDepth * p.contactNormal;
+				scene.penetrations[p.rigidBodyIndex2] = -1.0f * p.penetrationDepth * p.contactNormal * 0.5f;
 		}
 	}
 
